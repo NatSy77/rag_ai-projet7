@@ -98,6 +98,7 @@ Le fichier `.env` est exclu du dépôt grâce au fichier `.gitignore`.
 * [x] Création du fichier `requirements.txt`
 * [x] Création du fichier `.gitignore`
 * [x] Création du README
+* [x] Test de reproductibilité de l'environnement depuis `requirements.txt`
 
 ## Remarque sur la compatibilité
 
@@ -112,3 +113,12 @@ FAISS CPU 1.8.0
 Ces versions ont été retenues afin d'assurer la compatibilité de FAISS avec l'environnement de développement utilisé pour le POC.
 
 Le fichier `requirements.txt` permet de reproduire les dépendances nécessaires au projet.
+
+### Test de reproductibilité
+
+L'installation des dépendances a été testée dans un environnement virtuel vierge avec Python 3.11.
+
+La commande :
+
+```bash
+pip install -r requirements.txt

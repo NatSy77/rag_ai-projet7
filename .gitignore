@@ -1,5 +1,17 @@
+# Environnements virtuels Python
 env/
+env_test/
+.venv/
+
+# Variables d'environnement et secrets
 .env
+
+# Cache Python
 __pycache__/
 *.pyc
+
+# Configuration locale VS Code
+.vscode/
+
+# Fichiers macOS
 .DS_Store
