@@ -122,3 +122,22 @@ La commande :
 
 ```bash
 pip install -r requirements.txt
+
+## Pré-processing des données OpenAgenda
+
+Les données utilisées par le POC proviennent du jeu de données public OpenAgenda accessible via l'API OpenDataSoft.
+
+### Périmètre des données
+
+Pour ce POC, le périmètre retenu est :
+
+- **Localisation :** Paris
+- **Historique :** événements dont la dernière occurrence date de moins d'un an
+- **Événements futurs :** inclus
+- **Source :** OpenAgenda
+
+Le filtre appliqué lors de la récupération est :
+
+```text
+location_city = Paris
+lastdate_end >= 2025-08-23

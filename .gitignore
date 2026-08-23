@@ -15,3 +15,6 @@ __pycache__/
 
 # Fichiers macOS
 .DS_Store
+
+# Données générées par le pré-processing
+data/events_clean.csv
