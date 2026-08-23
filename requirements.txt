@@ -21,3 +21,6 @@ mistralai==2.9.3
 
 # Gestion des variables d'environnement et de la clé API Mistral
 python-dotenv==1.2.3
+
+# Manipulation et nettoyage des données
+pandas==3.0.5
