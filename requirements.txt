@@ -24,3 +24,6 @@ python-dotenv==1.2.3
 
 # Manipulation et nettoyage des données
 pandas==3.0.5
+
+# Tests unitaires
+pytest==9.1.0

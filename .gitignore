@@ -9,6 +9,7 @@ env_test/
 # Cache Python
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Configuration locale VS Code
 .vscode/

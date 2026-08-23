@@ -141,3 +141,25 @@ Le filtre appliqué lors de la récupération est :
 ```text
 location_city = Paris
 lastdate_end >= 2025-08-23
+
+### Tests unitaires
+
+Des tests unitaires sont mis en place avec `pytest` afin de vérifier le bon fonctionnement de la récupération et du pré-processing des données.
+
+Les tests de récupération utilisent des réponses API simulées afin de ne pas dépendre de la disponibilité du service OpenAgenda.
+
+Les tests vérifient notamment :
+
+- la récupération correcte des événements ;
+- la gestion de la pagination de l'API ;
+- la suppression des événements sans titre ni description ;
+- la conservation des événements valides ;
+- la suppression de la colonne `category` ;
+- la normalisation du code pays ;
+- la normalisation de la région ;
+- la conversion des dates au format `datetime`.
+
+Pour exécuter l'ensemble des tests depuis la racine du projet :
+
+```bash
+python -m pytest tests/ -v
