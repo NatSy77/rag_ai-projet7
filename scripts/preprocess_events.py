@@ -1,7 +1,7 @@
 import pandas as pd
-
 from fetch_events import fetch_events
-
+import re
+from html import unescape
 
 # Colonnes conservées pour le futur système RAG.
 # Elles regroupent les informations nécessaires pour répondre
@@ -30,6 +30,119 @@ SELECTED_COLUMNS = [
     "registration",
 ]
 
+def clean_html(text):
+    """
+    Nettoie une chaîne contenant du HTML.
+
+    Les balises HTML sont supprimées et les entités HTML
+    sont converties en caractères lisibles.
+    """
+    if pd.isna(text):
+        return None
+
+    # Conversion des entités HTML (&amp;, &quot;, etc.).
+    text = unescape(str(text))
+
+    # Remplacement de certaines balises de séparation
+    # par des espaces avant suppression des autres balises.
+    text = re.sub(r"<br\s*/?>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"</p>", " ", text, flags=re.IGNORECASE)
+
+    # Suppression des balises HTML restantes.
+    text = re.sub(r"<[^>]+>", "", text)
+
+    # Suppression des espaces multiples.
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
+
+def build_text_for_embedding(row):
+    """
+    Construit le texte qui sera utilisé pour générer
+    l'embedding d'un événement.
+
+    Seules les informations disponibles sont ajoutées
+    afin d'éviter d'inclure des valeurs manquantes.
+    """
+
+    parts = []
+
+    # Titre de l'événement
+    if pd.notna(row["title_fr"]):
+        parts.append(f"Titre : {row['title_fr']}")
+
+    # Description courte
+    if pd.notna(row["description_fr"]):
+        parts.append(f"Description : {row['description_fr']}")
+        
+    if pd.notna(row["longdescription_fr"]):
+        long_description = clean_html(
+            row["longdescription_fr"]
+        )
+
+        if long_description:
+            parts.append(
+                f"Description détaillée : {long_description}"
+            )
+
+    # Mots-clés OpenAgenda
+    if isinstance(row["keywords_fr"], list):
+        keywords = [
+            str(keyword).strip()
+            for keyword in row["keywords_fr"]
+            if str(keyword).strip()
+        ]
+
+        if keywords:
+            parts.append(
+                "Mots-clés : " + ", ".join(keywords)
+            )
+
+    # Informations temporelles
+    if pd.notna(row["daterange_fr"]):
+        parts.append(f"Dates : {row['daterange_fr']}")
+        
+    if pd.notna(row["firstdate_begin"]):
+        parts.append(
+            "Début : "
+            + row["firstdate_begin"].strftime("%d/%m/%Y %H:%M")
+        )
+
+    if pd.notna(row["lastdate_end"]):
+        parts.append(
+            "Fin : "
+            + row["lastdate_end"].strftime("%d/%m/%Y %H:%M")
+        )
+
+    # Informations sur le lieu
+    location_parts = []
+
+    if pd.notna(row["location_name"]):
+        location_parts.append(str(row["location_name"]))
+
+    if pd.notna(row["location_address"]):
+        location_parts.append(str(row["location_address"]))
+
+    if pd.notna(row["location_city"]):
+        location_parts.append(str(row["location_city"]))
+
+    if location_parts:
+        parts.append(
+            "Lieu : " + ", ".join(location_parts)
+        )
+
+    # Restrictions d'âge lorsqu'elles sont renseignées
+    if pd.notna(row["age_min"]):
+        parts.append(
+            f"Âge minimum : {int(row['age_min'])} ans"
+        )
+
+    if pd.notna(row["age_max"]):
+        parts.append(
+            f"Âge maximum : {int(row['age_max'])} ans"
+        )
+
+    return "\n".join(parts)
 
 def preprocess_events(events):
     """
@@ -105,6 +218,13 @@ def preprocess_events(events):
     # location_region : "Île-de-France", "IDF", "Paris", etc.
     # La région est donc normalisée.
     df["location_region"] = "Île-de-France"
+    
+    # Construction du contenu textuel qui sera utilisé
+    # lors de la future génération des embeddings.
+    df["text_for_embedding"] = df.apply(
+        build_text_for_embedding,
+        axis=1,
+    )
 
     # Réinitialisation de l'index après suppression de lignes.
     df = df.reset_index(drop=True)
@@ -148,6 +268,9 @@ if __name__ == "__main__":
         "Dates de fin invalides :",
         df_clean["lastdate_end"].isna().sum(),
     )
+    
+    print("\nExemple de texte préparé pour l'embedding :\n")
+    print(df_clean.iloc[0]["text_for_embedding"])
     
     # Sauvegarde du jeu de données nettoyé.
     # Ce fichier servira de base aux prochaines étapes du projet,

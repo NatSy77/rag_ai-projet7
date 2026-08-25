@@ -122,6 +122,7 @@ La commande :
 
 ```bash
 pip install -r requirements.txt
+```
 
 ## Pré-processing des données OpenAgenda
 
@@ -141,12 +142,13 @@ Le filtre appliqué lors de la récupération est :
 ```text
 location_city = Paris
 lastdate_end >= 2025-08-23
+```
 
 ### Tests unitaires
 
-Des tests unitaires sont mis en place avec `pytest` afin de vérifier le bon fonctionnement de la récupération et du pré-processing des données.
+Des tests unitaires sont mis en place avec `pytest` afin de vérifier le bon fonctionnement de la récupération, du pré-processing des données et de la génération des embeddings.
 
-Les tests de récupération utilisent des réponses API simulées afin de ne pas dépendre de la disponibilité du service OpenAgenda.
+Les tests de récupération et de génération des embeddings utilisent des réponses simulées afin de ne pas dépendre de la disponibilité des services externes ni de consommer inutilement l'API Mistral.
 
 Les tests vérifient notamment :
 
@@ -157,9 +159,46 @@ Les tests vérifient notamment :
 - la suppression de la colonne `category` ;
 - la normalisation du code pays ;
 - la normalisation de la région ;
-- la conversion des dates au format `datetime`.
+- la conversion des dates au format `datetime` ;
+- la génération des embeddings par lots ;
+- la conservation de l'ordre des embeddings entre les différents lots.
 
 Pour exécuter l'ensemble des tests depuis la racine du projet :
 
 ```bash
 python -m pytest tests/ -v
+```
+
+## Vectorisation et indexation des événements
+
+Les événements nettoyés sont préparés pour la recherche sémantique à l'aide d'une colonne `text_for_embedding`.
+
+Cette représentation textuelle regroupe les informations utiles à la recommandation :
+
+- titre ;
+- description ;
+- description détaillée nettoyée des balises HTML ;
+- mots-clés ;
+- dates ;
+- lieu ;
+- restrictions d'âge lorsqu'elles sont disponibles.
+
+### Génération des embeddings
+
+Les représentations vectorielles sont générées avec le modèle `mistral-embed`.
+
+La génération est effectuée par lots afin de limiter la taille des requêtes envoyées à l'API.
+
+Le script implémente également :
+
+- une sauvegarde progressive des embeddings ;
+- un mécanisme de reprise après interruption ;
+- une gestion des limitations de débit de l'API ;
+- une nouvelle tentative en cas d'erreur temporaire du service.
+
+Les embeddings générés ont une dimension de 1024.
+
+Script :
+
+```bash
+python scripts/generate_embeddings.py

@@ -19,3 +19,10 @@ __pycache__/
 
 # Données générées par le pré-processing
 data/events_clean.csv
+
+# Embeddings et progression générés localement
+data/embeddings.npy
+data/embedding_progress.txt
+
+# Index vectoriel FAISS généré localement
+data/events.index
