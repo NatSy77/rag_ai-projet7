@@ -125,6 +125,18 @@ Le fichier `.env` est exclu du dépôt grâce au fichier `.gitignore` et ne doit
 * [x] Tests de plusieurs scénarios de recherche
 * [x] Tests unitaires
 
+**Étape 4 — Système RAG avec LangChain et Mistral**
+
+* [x] Mise en place du retrieval depuis FAISS
+* [x] Construction du contexte à partir des événements
+* [x] Intégration du modèle Mistral pour la génération
+* [x] Orchestration de la génération avec LangChain
+* [x] Création d'une classe `RAGSystem` réutilisable
+* [x] Retour de la réponse, du contexte et des sources
+* [x] Gestion des questions vides
+* [x] Test d'une requête hors périmètre
+* [x] Tests unitaires du système RAG
+
 ## Remarque sur la compatibilité
 
 L'environnement utilise actuellement :
@@ -142,6 +154,162 @@ Le fichier `requirements.txt` permet de reproduire les dépendances nécessaires
 ## Indexation vectorielle avec FAISS
 
 Les événements nettoyés sont indexés dans une base vectorielle FAISS afin de permettre une recherche rapide par similarité sémantique.
+
+## Système RAG avec Mistral
+
+Le système de recommandation utilise une architecture **RAG (Retrieval-Augmented Generation)** combinant la recherche sémantique dans FAISS et un modèle de langage Mistral.
+
+L'objectif est de générer des réponses naturelles à partir des événements réellement présents dans la base vectorielle, tout en limitant les hallucinations du modèle.
+
+### Orchestration avec LangChain
+
+LangChain orchestre la partie génération du système RAG à travers une chaîne LCEL composée de :
+
+```text
+ChatPromptTemplate
+        ↓
+ChatMistralAI
+        ↓
+StrOutputParser
+
+### Architecture du système RAG
+
+Le traitement d'une question suit les étapes suivantes :
+
+```text
+Question utilisateur
+        ↓
+Embedding de la question avec Mistral
+        ↓
+Recherche sémantique dans FAISS
+        ↓
+Sélection des chunks pertinents
+        ↓
+Récupération des métadonnées des événements
+        ↓
+Construction du contexte
+        ↓
+Prompt envoyé au LLM
+        ↓
+Mistral Small
+        ↓
+Réponse augmentée + sources
+```
+
+### Classe `RAGSystem`
+
+La logique métier du RAG est encapsulée dans la classe :
+
+```text
+scripts/rag_system.py
+```
+
+Cette classe permet notamment de :
+
+- charger les métadonnées et l'index FAISS une seule fois ;
+- transformer la question utilisateur en embedding ;
+- rechercher les événements les plus pertinents ;
+- dédupliquer les résultats ;
+- construire le contexte fourni au modèle de langage ;
+- générer une réponse naturelle avec Mistral ;
+- retourner les sources ayant servi à produire la réponse.
+
+Cette séparation permet de rendre la logique RAG indépendante de la future API REST.
+
+### Modèles Mistral
+
+Deux usages distincts de Mistral sont utilisés :
+
+```text
+Embeddings : mistral-embed
+Génération : mistral-small-2603
+```
+
+`mistral-embed` est utilisé pour représenter les chunks et les requêtes utilisateur sous forme de vecteurs.
+
+`mistral-small-2603` est utilisé pour générer une réponse en langage naturel à partir du contexte récupéré dans FAISS.
+
+### Retrieval
+
+Pour chaque question :
+
+1. un embedding de la question est généré ;
+2. le vecteur est normalisé avec une normalisation L2 ;
+3. FAISS recherche les chunks sémantiquement les plus proches ;
+4. plusieurs chunks sont récupérés afin de permettre la déduplication ;
+5. les meilleurs événements distincts sont conservés.
+
+Par défaut, le système utilise les 5 événements les plus pertinents pour construire le contexte du LLM.
+
+### Génération augmentée
+
+Le contexte transmis au modèle contient les informations récupérées dans la base vectorielle, notamment :
+
+- le titre de l'événement ;
+- la date ;
+- le lieu ;
+- le chunk pertinent ;
+- l'URL de l'événement.
+
+Le prompt demande au modèle de répondre uniquement à partir du contexte fourni et de ne pas inventer d'événement, de date ou de lieu absent des données récupérées.
+
+Si le contexte ne permet pas de répondre correctement à la question, le modèle doit indiquer qu'il ne dispose pas d'informations suffisantes.
+
+### Structure de la réponse
+
+La méthode `ask()` retourne une structure contenant :
+
+```python
+{
+    "answer": "...",
+    "context": "...",
+    "sources": [
+        {
+            "title": "...",
+            "date": "...",
+            "location": "...",
+            "url": "...",
+            "similarity_score": 0.0
+        }
+    ]
+}
+```
+
+Cette structure permet de conserver la réponse générée ainsi que le contexte et les sources utilisés.
+
+Elle facilite également la future exposition du système via une API REST et l'évaluation automatique de la qualité du RAG.
+
+### Validation qualitative
+
+Le système a été testé manuellement avec plusieurs types de questions :
+
+- recommandation de concerts à Paris ;
+- activités pour enfants ;
+- musées et expositions ;
+- requête hors périmètre concernant un restaurant japonais à Lyon.
+
+Les tests montrent que le système récupère des événements cohérents avec les demandes et génère des réponses basées sur les résultats FAISS.
+
+Pour une demande hors périmètre, le système indique qu'il ne dispose pas des informations nécessaires plutôt que d'inventer une recommandation.
+
+### Tests du système RAG
+
+Les tests unitaires du RAG utilisent des clients et index simulés afin de ne pas dépendre de l'API Mistral ni de l'index FAISS réel pendant leur exécution.
+
+Ils vérifient notamment :
+
+- la cohérence entre le nombre de chunks et l'index FAISS ;
+- la construction du contexte ;
+- le retrieval et le classement des résultats ;
+- la structure retournée par `ask()` ;
+- la présence de la réponse, du contexte et des sources ;
+- le rejet des questions vides.
+
+État actuel de la suite de tests du projet :
+
+```text
+22 tests réussis
+```
 
 ### Découpage des événements en chunks
 
