@@ -26,3 +26,13 @@ data/embedding_progress.txt
 
 # Index vectoriel FAISS généré localement
 data/events.index
+
+# Chunks générés localement
+data/event_chunks.csv
+
+# Embeddings des chunks générés localement
+data/chunk_embeddings.npy
+data/chunk_embedding_progress.txt
+
+# Index FAISS des chunks généré localement
+data/chunks.index

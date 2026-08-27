@@ -4,11 +4,11 @@ import faiss
 import numpy as np
 
 
-# Fichier contenant les embeddings générés avec Mistral.
-EMBEDDINGS_PATH = Path("data/embeddings.npy")
+# Embeddings générés à partir des chunks.
+EMBEDDINGS_PATH = Path("data/chunk_embeddings.npy")
 
-# Fichier dans lequel l'index FAISS sera sauvegardé.
-FAISS_INDEX_PATH = Path("data/events.index")
+# Index FAISS dédié aux chunks.
+FAISS_INDEX_PATH = Path("data/chunks.index")
 
 
 def build_faiss_index(embeddings):

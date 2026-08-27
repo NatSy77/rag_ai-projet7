@@ -240,27 +240,27 @@ def generate_embeddings_with_checkpoint(
     )
 
 if __name__ == "__main__":
-    # Chargement du dataset nettoyé et préparé
-    # pour la génération des embeddings.
-    df = pd.read_csv("data/events_clean.csv")
+    # Chargement des chunks préparés pour l'indexation FAISS.
+    chunks_df = pd.read_csv("data/event_chunks.csv")
 
-    # Récupération de l'ensemble des textes à vectoriser.
-    texts = df["text_for_embedding"].fillna("").tolist()
+    # Chaque chunk sera vectorisé séparément.
+    texts = chunks_df["chunk_text"].fillna("").tolist()
 
-    print("Nombre total d'événements à vectoriser :", len(texts))
+    print("Nombre total de chunks à vectoriser :", len(texts))
 
     # Génération des embeddings avec sauvegarde progressive.
-    # En cas d'interruption, une nouvelle exécution reprendra
-    # automatiquement à partir du dernier lot sauvegardé.
+    # Les fichiers utilisés ici sont différents de ceux créés
+    # pour les événements complets afin de conserver les deux
+    # expérimentations séparément.
     embeddings = generate_embeddings_with_checkpoint(
         texts,
         batch_size=50,
-        embeddings_path="data/embeddings.npy",
-        progress_path="data/embedding_progress.txt",
+        embeddings_path="data/chunk_embeddings.npy",
+        progress_path="data/chunk_embedding_progress.txt",
     )
 
-    print("\nVectorisation terminée.")
-    print("Nombre de textes :", len(texts))
+    print("\nVectorisation des chunks terminée.")
+    print("Nombre de chunks :", len(texts))
     print("Nombre de vecteurs :", len(embeddings))
 
     if len(embeddings) > 0:
