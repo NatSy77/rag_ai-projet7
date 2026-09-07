@@ -174,7 +174,7 @@ class RAGSystem:
         # On récupère davantage de chunks que le nombre final
         # d'événements souhaités afin de pouvoir dédupliquer.
         search_k = min(
-            top_k * 5,
+            top_k * 20,
             self.index.ntotal,
         )
 
@@ -188,6 +188,24 @@ class RAGSystem:
         ].copy()
 
         results["similarity_score"] = scores[0]
+        
+        # Conversion de la date de fin pour permettre
+        # le filtrage des événements terminés.
+        results["lastdate_end"] = pd.to_datetime(
+            results["lastdate_end"],
+            errors="coerce",
+            utc=True,
+        )
+
+        # Date actuelle en UTC.
+        now = pd.Timestamp.now(tz="UTC")
+
+        # Pour la recommandation, on conserve uniquement
+        # les événements encore en cours ou à venir.
+        results = results[
+            results["lastdate_end"].notna()
+            & (results["lastdate_end"] >= now)
+        ]
 
         # Suppression des doublons métier.
         results = (

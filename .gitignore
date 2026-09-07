@@ -36,3 +36,6 @@ data/chunk_embedding_progress.txt
 
 # Index FAISS des chunks généré localement
 data/chunks.index
+
+# Environnement séparé utilisé pour les tests Ragas
+env_ragas/

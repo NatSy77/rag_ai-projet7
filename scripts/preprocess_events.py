@@ -1,5 +1,5 @@
 import pandas as pd
-from fetch_events import fetch_events
+from scripts.fetch_events import fetch_events
 import re
 from html import unescape
 

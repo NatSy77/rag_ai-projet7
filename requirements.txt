@@ -13,8 +13,8 @@ langchain-mistralai==1.1.6
 langchain-huggingface==1.2.2
 
 # Modèles d'embeddings et NLP
-sentence-transformers==6.0.0
-transformers==5.15.0
+sentence-transformers==3.4.1
+transformers==4.48.3
 torch==2.2.2
 
 # SDK Mistral - génération des réponses avec le LLM
@@ -28,3 +28,7 @@ pandas==3.0.5
 
 # Tests unitaires
 pytest==9.1.0
+
+# API REST
+fastapi==0.141.1
+uvicorn==0.52.4
