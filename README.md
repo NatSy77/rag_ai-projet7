@@ -137,6 +137,219 @@ Le fichier `.env` est exclu du dépôt grâce au fichier `.gitignore` et ne doit
 * [x] Test d'une requête hors périmètre
 * [x] Tests unitaires du système RAG
 
+**Étape 5 — API REST et évaluation du système RAG**
+
+* [x] Création d'une API REST avec FastAPI
+* [x] Création de la route `POST /ask`
+* [x] Création de la route `POST /rebuild`
+* [x] Création des routes `/` et `/health`
+* [x] Validation des entrées avec Pydantic
+* [x] Séparation entre la logique RAG et l'API
+* [x] Ajout d'un filtrage des événements terminés
+* [x] Création de tests unitaires pour l'API
+* [x] Création d'un test fonctionnel de l'API
+* [x] Création d'un jeu de 10 questions d'évaluation
+* [x] Évaluation qualitative des réponses
+* [x] Expérimentation d'une évaluation automatique avec Ragas
+
+
+## API REST avec FastAPI
+
+Le système RAG est exposé à travers une API REST développée avec **FastAPI**.
+
+La logique métier reste encapsulée dans la classe `RAGSystem`, tandis que l'API est définie dans le dossier :
+
+```text
+app/
+├── __init__.py
+├── main.py
+└── schemas.py
+```
+
+Cette séparation permet de réutiliser le système RAG indépendamment de l'interface utilisée.
+
+### Lancement de l'API
+
+Depuis la racine du projet :
+
+```bash
+uvicorn app.main:app --reload
+```
+
+L'API est alors accessible localement sur le port `8000`.
+
+La documentation interactive Swagger est disponible sur :
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### Routes disponibles
+
+#### `GET /`
+
+Permet de vérifier que l'API est accessible.
+
+#### `GET /health`
+
+Retourne l'état de fonctionnement de l'API.
+
+Exemple :
+
+```json
+{
+  "status": "ok"
+}
+```
+
+#### `POST /ask`
+
+Permet d'envoyer une question au système RAG.
+
+Exemple de requête :
+
+```json
+{
+  "question": "Quels concerts de jazz sont disponibles à Paris ?"
+}
+```
+
+La réponse contient :
+
+* la réponse générée ;
+* le contexte utilisé ;
+* les événements sources ;
+* leurs métadonnées ;
+* leur score de similarité.
+
+#### `POST /rebuild`
+
+Permet de reconstruire la base vectorielle à partir des données OpenAgenda.
+
+Le processus réalise successivement :
+
+```text
+Récupération OpenAgenda
+        ↓
+Pré-processing
+        ↓
+Découpage en chunks
+        ↓
+Génération des embeddings
+        ↓
+Construction de l'index FAISS
+        ↓
+Rechargement du système RAG
+```
+
+Cette opération peut être longue et consommer des appels à l'API Mistral. Elle est donc destinée principalement à l'administration du POC.
+
+
+### Filtrage temporel des recommandations
+
+Le retrieval a été amélioré afin d'éviter de recommander des événements déjà terminés.
+
+Après la recherche FAISS, le système utilise `lastdate_end` pour conserver uniquement les événements encore en cours ou à venir.
+
+Un nombre plus important de candidats est récupéré avant ce filtrage afin de disposer de suffisamment de résultats pertinents après suppression des événements passés et des doublons.
+
+
+## Tests de l'API
+
+Les routes FastAPI sont testées avec `pytest` et `TestClient`.
+
+Les tests couvrent notamment :
+
+* les routes `/` et `/health` ;
+* une requête valide vers `/ask` ;
+* les questions vides ou composées uniquement d'espaces ;
+* les requêtes invalides ;
+* le fonctionnement de `/rebuild` ;
+* la gestion d'une erreur pendant la reconstruction.
+
+Le test fonctionnel `api_test.py` permet également de tester l'API en fonctionnement réel.
+
+Pour lancer la suite de tests unitaires :
+
+```bash
+python -m pytest tests -q
+```
+
+Résultat obtenu :
+
+```text
+30 passed
+```
+
+Un avertissement de dépréciation lié à `TestClient` et `httpx` reste présent mais n'empêche pas l'exécution des tests.
+
+
+## Évaluation du système RAG
+
+Un jeu d'évaluation de **10 questions représentatives** a été créé dans :
+
+```text
+evaluation_questions.csv
+```
+
+Il couvre plusieurs catégories :
+
+* concerts ;
+* expositions ;
+* activités familiales ;
+* musées ;
+* spectacles ;
+* événements gratuits ;
+* recherches liées à une date ;
+* requête hors périmètre.
+
+Les réponses produites par le RAG ont été sauvegardées dans :
+
+```text
+evaluation_results.csv
+```
+
+Une évaluation humaine utilise trois niveaux :
+
+* `correct` : réponse pertinente et fidèle aux informations récupérées ;
+* `partial` : réponse globalement pertinente mais incomplète ou insuffisamment justifiée ;
+* `incorrect` : réponse erronée, hors sujet ou non soutenue par les sources.
+
+Résultats obtenus :
+
+```text
+Questions évaluées : 10
+Correctes           : 9 (90 %)
+Partielles          : 1 (10 %)
+Incorrectes         : 0 (0 %)
+```
+
+La requête hors périmètre concernant la recommandation d'un restaurant japonais à Lyon a notamment permis de vérifier que le système refuse de générer une recommandation lorsque les informations nécessaires ne sont pas présentes dans son contexte.
+
+
+### Évaluation avec Ragas
+
+Une expérimentation avec **Ragas** a également été réalisée afin d'automatiser l'évaluation du système.
+
+Deux métriques ont été préparées :
+
+* `Faithfulness` : mesure la fidélité de la réponse au contexte récupéré ;
+* `AnswerRelevancy` : mesure la pertinence de la réponse par rapport à la question.
+
+L'intégration utilise les modèles Mistral à travers leur interface compatible OpenAI.
+
+Le script correspondant est :
+
+```text
+evaluate_ragas.py
+```
+
+Lors des essais, l'appel réel aux métriques Ragas a été limité par le quota de l'API Mistral et a retourné une erreur HTTP `429 Rate limit exceeded`.
+
+L'évaluation humaine sur les 10 questions représentatives a donc été conservée comme méthode principale pour le POC.
+
+Cette limitation met également en évidence une dépendance du système à un service externe et pourra faire l'objet d'améliorations futures : gestion du rate limiting, cache, mécanisme de retry/backoff ou utilisation d'un modèle local.
+
 ## Remarque sur la compatibilité
 
 L'environnement utilise actuellement :
@@ -305,7 +518,7 @@ Ils vérifient notamment :
 - la présence de la réponse, du contexte et des sources ;
 - le rejet des questions vides.
 
-État actuel de la suite de tests du projet :
+État de la suite de tests à la fin de l'étape 4 :
 
 ```text
 22 tests réussis
@@ -468,7 +681,7 @@ Les tests couvrent également l'indexation vectorielle :
 - la déduplication des événements dans les résultats ;
 - le respect du nombre de résultats demandé (`top_k`).
 
-État actuel de la suite de tests :
+État de la suite de tests à la fin de l'étape 3 :
 
 ```text
 17 tests réussis
