@@ -17,7 +17,7 @@ FAISS_INDEX_PATH = Path("data/chunks.index")
 
 # Modèles Mistral utilisés dans le système.
 EMBEDDING_MODEL = "mistral-embed"
-GENERATION_MODEL = "mistral-small-2603"
+GENERATION_MODEL = "ministral-3b-2512"
 
 # Nombre d'événements utilisés comme contexte pour le LLM.
 DEFAULT_TOP_K = 5

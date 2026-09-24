@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from scripts.rag_system import RAGSystem
-
+from datetime import datetime, timedelta, timezone
 
 class FakeIndex:
     """
@@ -182,6 +182,11 @@ def create_fake_chunks():
     Crée un petit jeu de chunks utilisé
     pour les tests du système RAG.
     """
+    # Utilise une date future afin que les événements fictifs
+    # ne soient pas filtrés comme des événements déjà terminés.  
+    future_date = (
+        datetime.now(timezone.utc) + timedelta(days=30)
+    ).isoformat()
 
     return pd.DataFrame(
         [
@@ -189,7 +194,7 @@ def create_fake_chunks():
                 "uid": "1",
                 "title_fr": "Concert de jazz",
                 "daterange_fr": "10 septembre 2026",
-                "lastdate_end": "2026-09-10T22:00:00+00:00",
+                "lastdate_end": future_date,
                 "location_name": "Salle A",
                 "chunk_text": "Concert de jazz à Paris.",
                 "canonicalurl": "https://example.com/1",
@@ -198,7 +203,7 @@ def create_fake_chunks():
                 "uid": "2",
                 "title_fr": "Exposition",
                 "daterange_fr": "11 septembre 2026",
-                "lastdate_end": "2026-09-10T22:00:00+00:00",
+                "lastdate_end": future_date,
                 "location_name": "Musée B",
                 "chunk_text": "Exposition culturelle à Paris.",
                 "canonicalurl": "https://example.com/2",
@@ -207,7 +212,7 @@ def create_fake_chunks():
                 "uid": "3",
                 "title_fr": "Atelier enfants",
                 "daterange_fr": "12 septembre 2026",
-                "lastdate_end": "2026-09-10T22:00:00+00:00",
+                "lastdate_end": future_date,
                 "location_name": "Lieu C",
                 "chunk_text": "Atelier culturel pour enfants.",
                 "canonicalurl": "https://example.com/3",

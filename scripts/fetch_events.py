@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import requests
 
 
@@ -10,11 +12,17 @@ API_URL = (
 # Périmètre retenu pour le POC :
 # - événements localisés à Paris ;
 # - événements dont la dernière occurrence se termine
-#   au plus tôt le 23 août 2025.
+#   au plus tôt un an avant la date d'exécution du script.
 #
-# Cela permet de conserver un an d'historique ainsi
-# que les événements en cours et futurs.
-WHERE_FILTER = 'location_city="Paris" AND lastdate_end >= "2025-08-23"'
+# La date est calculée dynamiquement afin de toujours conserver
+# environ un an d'historique ainsi que les événements en cours et futurs.
+cutoff_date = (
+    datetime.now(timezone.utc) - timedelta(days=365)
+).date().isoformat()
+
+WHERE_FILTER = (
+    f'location_city="Paris" AND lastdate_end >= "{cutoff_date}"'
+)
 
 # L'API OpenDataSoft autorise jusqu'à 100 résultats par requête.
 LIMIT = 100

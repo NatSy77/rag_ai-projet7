@@ -4,10 +4,11 @@ API REST du système de recommandation d'événements culturels.
 Cette API expose le système RAG à travers des endpoints HTTP.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from httpx import HTTPStatusError
+
 from app.schemas import AskRequest, AskResponse, RebuildResponse
 from scripts.rag_system import RAGSystem
-from fastapi import FastAPI, HTTPException
 from scripts.rebuild_index import rebuild_vector_store
 
 app = FastAPI(
@@ -63,7 +64,25 @@ def ask_question(request: AskRequest):
             status_code=400,
             detail=str(exc),
         ) from exc
-        
+ 
+    except HTTPStatusError as exc:
+        # Mistral peut temporairement refuser les requêtes
+        # lorsque la limite d'utilisation de l'API est atteinte.
+        if exc.response.status_code == 429:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    "Le service Mistral est temporairement limité. "
+                    "Veuillez réessayer dans quelques instants."
+                ),
+            ) from exc
+
+        # Pour les autres erreurs HTTP provenant du service externe,
+        # on retourne une indisponibilité du service.
+        raise HTTPException(
+            status_code=503,
+            detail="Le service Mistral est temporairement indisponible.",
+        ) from exc        
 @app.post(
     "/rebuild",
     response_model=RebuildResponse,

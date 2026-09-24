@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 import app.main as main_module
+import httpx
 
 
 class FakeRAGSystem:
@@ -193,3 +194,49 @@ def test_rebuild_handles_error(monkeypatch):
 
     assert response.status_code == 500
     assert "Erreur lors de la reconstruction" in response.json()["detail"]
+
+def test_ask_handles_mistral_rate_limit(monkeypatch):
+    """
+    Vérifie que l'API retourne HTTP 429 lorsque
+    Mistral refuse temporairement les requêtes
+    à cause de la limite d'utilisation.
+    """
+
+    class FakeRateLimitedRAGSystem:
+        def ask(self, question):
+            request = httpx.Request(
+                "POST",
+                "https://api.mistral.ai/v1/chat/completions",
+            )
+
+            response = httpx.Response(
+                status_code=429,
+                request=request,
+            )
+
+            raise httpx.HTTPStatusError(
+                "Rate limit exceeded",
+                request=request,
+                response=response,
+            )
+
+    monkeypatch.setattr(
+        main_module,
+        "rag_system",
+        FakeRateLimitedRAGSystem(),
+    )
+
+    response = client.post(
+        "/ask",
+        json={
+            "question": "Quels concerts sont disponibles à Paris ?"
+        },
+    )
+
+    assert response.status_code == 429
+    assert response.json() == {
+        "detail": (
+            "Le service Mistral est temporairement limité. "
+            "Veuillez réessayer dans quelques instants."
+        )
+    }    
