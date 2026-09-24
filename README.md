@@ -152,6 +152,20 @@ Le fichier `.env` est exclu du dépôt grâce au fichier `.gitignore` et ne doit
 * [x] Évaluation qualitative des réponses
 * [x] Expérimentation d'une évaluation automatique avec Ragas
 
+**Étape 6 — Conteneurisation et déploiement local**
+
+* [x] Création d'une image Docker pour l'API RAG
+* [x] Création d'un fichier `.dockerignore`
+* [x] Création de dépendances dédiées au conteneur avec `requirements-docker.txt`
+* [x] Intégration de l'index FAISS et des métadonnées nécessaires au RAG
+* [x] Transmission sécurisée de la clé API Mistral au démarrage du conteneur
+* [x] Lancement de l'API FastAPI dans Docker
+* [x] Vérification de la route `/health`
+* [x] Vérification de la documentation Swagger `/docs`
+* [x] Test end-to-end d'une question avec `/ask`
+* [x] Gestion des erreurs de limitation de débit de l'API Mistral
+* [x] Validation de la chaîne complète Docker → FastAPI → FAISS → Mistral → réponse
+
 
 ## API REST avec FastAPI
 
@@ -244,6 +258,101 @@ Rechargement du système RAG
 
 Cette opération peut être longue et consommer des appels à l'API Mistral. Elle est donc destinée principalement à l'administration du POC.
 
+## Conteneurisation avec Docker
+
+L'API RAG peut être exécutée dans un conteneur Docker afin de disposer d'un environnement reproductible et indépendant de l'environnement Python local.
+
+Le conteneur embarque :
+
+* l'API FastAPI ;
+* la logique du système RAG ;
+* l'index vectoriel FAISS ;
+* les métadonnées des événements nécessaires au retrieval ;
+* les dépendances Python nécessaires à l'exécution.
+
+La clé API Mistral n'est pas intégrée dans l'image Docker. Elle est transmise au conteneur au moment de son lancement à partir du fichier `.env`.
+
+### Construction de l'image
+
+Depuis la racine du projet :
+
+```bash
+docker build -t rag-events-api .
+```
+
+### Lancement du conteneur
+
+```bash
+docker run --rm -p 8000:8000 \
+  --env-file .env \
+  rag-events-api
+```
+
+L'option `-p 8000:8000` expose le port de l'API sur la machine locale.
+
+L'option `--env-file .env` permet de transmettre la variable `MISTRAL_API_KEY` au conteneur sans intégrer la clé dans l'image.
+
+L'option `--rm` supprime automatiquement le conteneur lorsqu'il est arrêté.
+
+Une fois le conteneur lancé, l'API est accessible sur :
+
+```text
+http://localhost:8000
+```
+
+La documentation Swagger est disponible sur :
+
+```text
+http://localhost:8000/docs
+```
+
+La route de vérification peut être appelée sur :
+
+```text
+http://localhost:8000/health
+```
+
+Elle doit retourner :
+
+```json
+{
+  "status": "ok"
+}
+```
+
+### Test du système RAG dans Docker
+
+La route `POST /ask` permet de tester la chaîne complète :
+
+```text
+Question utilisateur
+        ↓
+API FastAPI dans Docker
+        ↓
+Embedding de la question avec Mistral
+        ↓
+Recherche vectorielle FAISS
+        ↓
+Construction du contexte
+        ↓
+Génération avec Ministral 3B
+        ↓
+Réponse + sources
+```
+
+Le fonctionnement end-to-end a été validé localement avec le conteneur Docker.
+
+### Dépendances Docker
+
+Le fichier `requirements-docker.txt` contient uniquement les dépendances nécessaires à l'exécution de l'API dans le conteneur.
+
+Cette séparation évite notamment d'installer certaines dépendances de l'environnement de développement qui ne sont pas nécessaires à l'exécution du RAG dans Docker.
+
+### Remarque sur la reconstruction de l'index
+
+La route `/rebuild` permet de reconstruire les données et l'index FAISS, mais cette opération effectue de nombreux appels à l'API Mistral et peut être longue.
+
+Pour la démonstration du POC, le conteneur utilise donc directement l'index FAISS et les métadonnées déjà générés.
 
 ### Filtrage temporel des recommandations
 
@@ -278,7 +387,7 @@ python -m pytest tests -q
 Résultat obtenu :
 
 ```text
-30 passed
+31 passed
 ```
 
 Un avertissement de dépréciation lié à `TestClient` et `httpx` reste présent mais n'empêche pas l'exécution des tests.
@@ -404,7 +513,7 @@ Construction du contexte
         ↓
 Prompt envoyé au LLM
         ↓
-Mistral Small
+Ministral 3B
         ↓
 Réponse augmentée + sources
 ```
@@ -435,12 +544,12 @@ Deux usages distincts de Mistral sont utilisés :
 
 ```text
 Embeddings : mistral-embed
-Génération : mistral-small-2603
+Génération : ministral-3b-2512
 ```
 
 `mistral-embed` est utilisé pour représenter les chunks et les requêtes utilisateur sous forme de vecteurs.
 
-`mistral-small-2603` est utilisé pour générer une réponse en langage naturel à partir du contexte récupéré dans FAISS.
+`ministral-3b-2512` est utilisé pour générer une réponse en langage naturel à partir du contexte récupéré dans FAISS.
 
 ### Retrieval
 
@@ -648,7 +757,8 @@ Le filtre appliqué lors de la récupération est :
 
 ```text
 location_city = Paris
-lastdate_end >= 2025-08-23
+lastdate_end >= date d'exécution - 365 jours
+La date limite est calculée dynamiquement lors de l'exécution du script `fetch_events.py`. Le système conserve ainsi une année glissante d'historique ainsi que les événements en cours et à venir.
 ```
 
 ### Tests unitaires
