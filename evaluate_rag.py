@@ -22,6 +22,8 @@ def main():
     for _, row in questions_df.iterrows():
         question = row["question"]
         category = row["category"]
+        expected_scope = row["expected_scope"]
+        expected_behavior = row["expected_behavior"]
 
         print(f"\nQuestion : {question}")
 
@@ -38,6 +40,8 @@ def main():
             {
                 "question": question,
                 "category": category,
+                "expected_scope": expected_scope,
+                "expected_behavior": expected_behavior,
                 "answer": rag_result["answer"],
                 "source_titles": source_titles,
                 "number_of_sources": len(sources),
