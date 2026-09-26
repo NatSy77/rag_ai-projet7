@@ -1,0 +1,11 @@
+question,category,faithfulness,answer_relevancy,mean_similarity_score,error
+Quels concerts de jazz sont disponibles à Paris ?,concert,1.0,0.9054765002505821,0.7984445333480835,
+Quels concerts puis-je voir prochainement ?,concert,1.0,0.8166627626764628,0.7797866582870483,
+Quelles expositions sont disponibles à Paris ?,exposition,0.4,0.9156998245646607,0.8173234224319458,
+Je cherche une activité culturelle pour des enfants.,famille,0.8333333333333334,0.849537905368226,0.7884011745452881,
+Quels événements puis-je voir dans un musée ?,musee,,,,The output is incomplete due to a max_tokens length limit.
+Je cherche un spectacle à Paris.,spectacle,0.7777777777777778,0.8201291162792028,0.781716251373291,
+Quels événements gratuits sont disponibles ?,gratuit,,,,The output is incomplete due to a max_tokens length limit.
+Que puis-je faire à Paris ce week-end ?,date,0.625,0.8290666353226807,0.7711528778076172,
+Je cherche une activité culturelle en septembre.,date,0.25,0.0,0.7496001124382019,
+Peux-tu me recommander un restaurant japonais à Lyon ?,hors_perimetre,0.6666666666666666,0.0,0.7067433953285217,
