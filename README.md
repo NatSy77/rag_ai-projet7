@@ -247,6 +247,28 @@ Exemple de requête :
   "question": "Quels concerts de jazz sont disponibles à Paris ?"
 }
 ```
+Exemple avec `curl` :
+
+```bash
+curl -X POST "http://127.0.0.1:8000/ask" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Quels concerts de jazz sont disponibles à Paris ?"}'
+```
+
+Exemple avec Python :
+
+```python
+import requests
+
+response = requests.post(
+    "http://127.0.0.1:8000/ask",
+    json={
+        "question": "Quels concerts de jazz sont disponibles à Paris ?"
+    },
+)
+
+print(response.json())
+```
 
 La réponse contient :
 
