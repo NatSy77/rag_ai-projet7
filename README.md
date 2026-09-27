@@ -184,10 +184,10 @@ Cette séparation permet de réutiliser le système RAG indépendamment de l'int
 
 ### Lancement de l'API
 
-Depuis la racine du projet :
+Depuis la racine du projet, l'API peut être lancée avec le script prévu à cet effet :
 
 ```bash
-uvicorn app.main:app --reload
+python scripts/run_api.py
 ```
 
 L'API est alors accessible localement sur le port `8000`.
@@ -215,6 +215,26 @@ Exemple :
   "status": "ok"
 }
 ```
+#### `GET /metadata`
+
+Retourne les principales informations sur le système RAG actuellement chargé.
+
+Exemple de réponse :
+
+```json
+{
+  "scope": {
+    "domain": "événements culturels",
+    "city": "Paris"
+  },
+  "embedding_model": "mistral-embed",
+  "generation_model": "ministral-3b-2512",
+  "vector_store": "FAISS",
+  "indexed_chunks": 15395
+}
+```
+
+Le nombre de chunks indexés est récupéré directement depuis l'index FAISS chargé par le système et peut donc évoluer après une reconstruction de la base vectorielle.
 
 #### `POST /ask`
 
@@ -369,12 +389,13 @@ Les routes FastAPI sont testées avec `pytest` et `TestClient`.
 
 Les tests couvrent notamment :
 
-* les routes `/` et `/health` ;
+* les routes `/`, `/health` et `/metadata` ;
 * une requête valide vers `/ask` ;
 * les questions vides ou composées uniquement d'espaces ;
 * les requêtes invalides ;
 * le fonctionnement de `/rebuild` ;
-* la gestion d'une erreur pendant la reconstruction.
+* la gestion d'une erreur pendant la reconstruction ;
+* la gestion de la limitation de débit de l'API Mistral.
 
 Le test fonctionnel `api_test.py` permet également de tester l'API en fonctionnement réel.
 
@@ -387,7 +408,26 @@ python -m pytest tests -q
 Résultat obtenu :
 
 ```text
-31 passed
+32 passed
+```
+Deux tests fonctionnels supplémentaires sont définis dans `api_test.py`. Ils vérifient `/health` et `/ask` sur une API réellement démarrée.
+
+Avec l'API lancée via :
+
+```bash
+python scripts/run_api.py
+```
+
+ils peuvent être exécutés avec :
+
+```bash
+python -m pytest api_test.py -v
+```
+
+Résultat obtenu :
+
+```text
+2 passed
 ```
 
 Un avertissement de dépréciation lié à `TestClient` et `httpx` reste présent mais n'empêche pas l'exécution des tests.
@@ -438,26 +478,42 @@ La requête hors périmètre concernant la recommandation d'un restaurant japona
 
 ### Évaluation avec Ragas
 
-Une expérimentation avec **Ragas** a également été réalisée afin d'automatiser l'évaluation du système.
+Une évaluation automatique complémentaire a été réalisée avec **Ragas** afin de mesurer quantitativement la qualité du système RAG.
 
-Deux métriques ont été préparées :
+Les métriques utilisées sont :
 
-* `Faithfulness` : mesure la fidélité de la réponse au contexte récupéré ;
-* `AnswerRelevancy` : mesure la pertinence de la réponse par rapport à la question.
+* `Faithfulness` : mesure dans quelle mesure la réponse générée est fidèle au contexte récupéré ;
+* `AnswerRelevancy` : mesure la pertinence de la réponse par rapport à la question utilisateur.
 
-L'intégration utilise les modèles Mistral à travers leur interface compatible OpenAI.
+Un indicateur issu du retrieval est également conservé :
 
-Le script correspondant est :
+* `mean_similarity_score` : moyenne des scores de similarité FAISS des sources utilisées pour répondre à une question.
+
+Le script d'évaluation est :
 
 ```text
 evaluate_ragas.py
 ```
 
-Lors des essais, l'appel réel aux métriques Ragas a été limité par le quota de l'API Mistral et a retourné une erreur HTTP `429 Rate limit exceeded`.
+Les résultats sont sauvegardés dans :
 
-L'évaluation humaine sur les 10 questions représentatives a donc été conservée comme méthode principale pour le POC.
+```text
+evaluation_ragas_results.csv
+```
 
-Cette limitation met également en évidence une dépendance du système à un service externe et pourra faire l'objet d'améliorations futures : gestion du rate limiting, cache, mécanisme de retry/backoff ou utilisation d'un modèle local.
+Sur les 10 questions du jeu d'évaluation, les métriques Ragas ont pu être calculées complètement pour **8 questions**. Deux évaluations n'ont pas abouti en raison d'une limite de longueur de sortie du modèle d'évaluation.
+
+Résultats moyens calculés sur les 8 évaluations disponibles :
+
+```text
+Faithfulness          : 0.694
+Answer Relevancy      : 0.642
+Mean similarity FAISS : 0.774
+```
+
+Ces résultats doivent être interprétés en complément de l'évaluation humaine. En particulier, certaines requêtes spécifiques, temporelles ou hors périmètre peuvent être pénalisées par une métrique automatique générique alors que le comportement du système reste adapté au besoin métier.
+
+L'évaluation humaine sur les 10 questions reste donc la méthode principale d'évaluation du POC, avec **9 réponses correctes, 1 réponse partielle et aucune réponse incorrecte**.
 
 ## Remarque sur la compatibilité
 

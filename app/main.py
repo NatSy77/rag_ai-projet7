@@ -8,7 +8,11 @@ from fastapi import FastAPI, HTTPException
 from httpx import HTTPStatusError
 
 from app.schemas import AskRequest, AskResponse, RebuildResponse
-from scripts.rag_system import RAGSystem
+from scripts.rag_system import (
+    RAGSystem,
+    EMBEDDING_MODEL,
+    GENERATION_MODEL,
+)
 from scripts.rebuild_index import rebuild_vector_store
 
 app = FastAPI(
@@ -33,7 +37,6 @@ def root():
         "message": "API RAG événements culturels opérationnelle"
     }
 
-
 @app.get("/health")
 def health():
     """
@@ -43,7 +46,29 @@ def health():
     return {
         "status": "ok"
     }
-    
+
+@app.get(
+    "/metadata",
+    summary="Afficher les informations du système RAG",
+)
+
+def metadata():
+    """
+    Retourne les principales informations techniques
+    et métier du système RAG actuellement chargé.
+    """
+
+    return {
+        "scope": {
+            "domain": "événements culturels",
+            "city": "Paris",
+        },
+        "embedding_model": EMBEDDING_MODEL,
+        "generation_model": GENERATION_MODEL,
+        "vector_store": "FAISS",
+        "indexed_chunks": int(rag_system.index.ntotal),
+    }
+ 
 @app.post(
     "/ask",
     response_model=AskResponse,
@@ -83,11 +108,13 @@ def ask_question(request: AskRequest):
             status_code=503,
             detail="Le service Mistral est temporairement indisponible.",
         ) from exc        
+
 @app.post(
     "/rebuild",
     response_model=RebuildResponse,
     summary="Reconstruire la base vectorielle",
 )
+
 def rebuild():
     """
     Reconstruit les données vectorielles et recharge

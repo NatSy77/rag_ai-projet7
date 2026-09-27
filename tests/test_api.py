@@ -53,6 +53,38 @@ def test_health():
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
+def test_metadata(monkeypatch):
+    """
+    Vérifie que /metadata retourne les informations
+    principales du système RAG chargé.
+    """
+
+    class FakeIndex:
+        ntotal = 15395
+
+    class FakeMetadataRAGSystem:
+        index = FakeIndex()
+
+    monkeypatch.setattr(
+        main_module,
+        "rag_system",
+        FakeMetadataRAGSystem(),
+    )
+
+    response = client.get("/metadata")
+
+    assert response.status_code == 200
+
+    assert response.json() == {
+        "scope": {
+            "domain": "événements culturels",
+            "city": "Paris",
+        },
+        "embedding_model": "mistral-embed",
+        "generation_model": "ministral-3b-2512",
+        "vector_store": "FAISS",
+        "indexed_chunks": 15395,
+    }
 
 def test_ask_returns_rag_response(monkeypatch):
     """Vérifie qu'une question valide retourne une réponse RAG."""
